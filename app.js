@@ -247,6 +247,43 @@ document.getElementById("export").addEventListener("click", () => {
   URL.revokeObjectURL(url);
 });
 
+// CSV 내보내기(엑셀용)
+document.getElementById("exportCsv").addEventListener("click", () => {
+  const all = loadAll(); // { "YYYY-MM-DD": [ {id,name,kcal,ts} ... ] }
+  const rows = [];
+  rows.push(["date","name","kcal","time"]); // 헤더
+
+  const dates = Object.keys(all).sort();
+  for (const d of dates) {
+    const entries = all[d] ?? [];
+    entries
+      .slice()
+      .sort((a,b)=>a.ts-b.ts)
+      .forEach(e => {
+        const t = new Date(e.ts);
+        const hh = String(t.getHours()).padStart(2,"0");
+        const mm = String(t.getMinutes()).padStart(2,"0");
+        rows.push([d, e.name, String(e.kcal), `${hh}:${mm}`]);
+      });
+  }
+
+  const csv = rows.map(r => r.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" }); // BOM 포함(한글 깨짐 방지)
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `calorie-calendar-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+function csvEscape(v) {
+  const s = String(v ?? "");
+  // 콤마/따옴표/줄바꿈 있으면 따옴표로 감싸고 내부 따옴표는 2개로
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+  return s;
+}
+
 // 전체 삭제
 document.getElementById("wipe").addEventListener("click", () => {
   if (!confirm("정말 전체 데이터를 삭제할까요?")) return;
@@ -259,4 +296,5 @@ function escapeHtml(s){
 }
 
 // 초기
+
 render();
