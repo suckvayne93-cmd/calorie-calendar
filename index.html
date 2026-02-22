@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>칼로리 캘린더</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#111111" />
+  <style>
+    :root { --bg:#0f1115; --card:#151923; --muted:#98a2b3; --text:#e6e8ee; --accent:#4da3ff; --danger:#ff5d5d; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; background:var(--bg); color:var(--text); }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
+    .top { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    .title { font-size: 18px; font-weight: 700; }
+    .nav { display:flex; gap:8px; align-items:center; }
+    button { background: var(--card); color: var(--text); border: 1px solid #232a3a; padding: 10px 12px; border-radius: 10px; cursor:pointer; }
+    button:hover { border-color:#2f3952; }
+    .grid { display:grid; grid-template-columns: 1.2fr 0.8fr; gap: 12px; margin-top: 12px; }
+    .card { background: var(--card); border: 1px solid #232a3a; border-radius: 14px; padding: 12px; }
+    .cal-header { display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; margin: 10px 0 8px; color: var(--muted); font-size: 12px; }
+    .cal { display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; }
+    .day { min-height: 74px; padding: 8px; border-radius: 12px; border: 1px solid #232a3a; background: #101522; display:flex; flex-direction:column; gap:6px; cursor:pointer; }
+    .day:hover { border-color:#2f3952; }
+    .day.muted { opacity: 0.45; }
+    .day.selected { outline: 2px solid var(--accent); border-color: transparent; }
+    .day .d { display:flex; justify-content:space-between; font-size: 12px; color: var(--muted); }
+    .k { font-size: 14px; font-weight:700; }
+    .k.ok { color:#a6f4c5; }
+    .k.bad { color:#fec84b; }
+    .k.over { color: var(--danger); }
+    .small { font-size: 12px; color: var(--muted); }
+    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    input { background:#0f1420; color:var(--text); border:1px solid #232a3a; border-radius:10px; padding:10px 12px; }
+    input[type="number"] { width: 120px; }
+    .list { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+    .item { display:flex; justify-content:space-between; gap:10px; border:1px solid #232a3a; border-radius:12px; padding:10px; background:#101522; }
+    .item b { font-weight:700; }
+    .item .meta { color:var(--muted); font-size:12px; }
+    .del { background: transparent; border: 1px solid #3a2530; color: #ffb4b4; }
+    .del:hover { border-color:#5a2d3d; }
+    .pill { display:inline-flex; gap:8px; align-items:center; padding:8px 10px; border-radius: 999px; border:1px solid #232a3a; background:#101522; color:var(--muted); font-size:12px; }
+    .pill b { color:var(--text); }
+    @media (max-width: 920px){
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="title">칼로리 캘린더 (로컬 저장 / 무료)</div>
+      <div class="nav">
+        <button id="prevMonth">◀</button>
+        <button id="today">오늘</button>
+        <button id="nextMonth">▶</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <div id="monthLabel" style="font-size:16px;font-weight:700;"></div>
+            <div class="small">날짜를 눌러 기록. 하루 목표 <b>2000kcal</b>, 주간 목표 <b>14000kcal</b></div>
+          </div>
+          <div class="row">
+            <span class="pill">선택일: <b id="selDateLabel">-</b></span>
+            <span class="pill">선택주(월~일) 합계: <b id="weekSum">0</b> kcal</span>
+            <span class="pill">주간 차이: <b id="weekDiff">0</b> kcal</span>
+            <span class="pill">달성률: <b id="weekRate">0</b>%</span>
+            <span class="pill">예상 변화: <b id="weekKg">0.00</b> kg</span>
+          </div>
+        </div>
+
+        <div class="cal-header">
+          <div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div><div>일</div>
+        </div>
+        <div id="cal" class="cal"></div>
+      </div>
+
+      <div class="card">
+        <div style="font-size:16px;font-weight:700;">일일 기록</div>
+        <div class="small" id="dayTotalLabel">선택한 날짜를 클릭하세요.</div>
+
+        <div class="row" style="margin-top:10px;">
+          <input id="foodName" placeholder="음식명 (예: 회사 점심)" />
+          <input id="foodKcal" type="number" inputmode="numeric" placeholder="kcal" />
+          <button id="add">추가</button>
+        </div>
+
+        <div class="row" style="margin-top:8px;">
+          <button id="quickLunch">+ 회사점심(850)</button>
+          <button id="quickProtein">+ 프로틴(120)</button>
+          <button id="quickDinner">+ 닭/고구마/샐러드(800)</button>
+        </div>
+
+        <div class="list" id="list"></div>
+
+        <div class="row" style="margin-top:10px; justify-content:space-between;">
+          <button id="export">백업 내보내기(JSON)</button>
+          <button class="del" id="wipe">전체 데이터 삭제</button>
+        </div>
+        <div class="small" style="margin-top:8px;">
+          * 로컬 저장이라 브라우저 데이터 삭제/폰 교체 시 사라질 수 있음 → 내보내기로 백업 추천
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
+</body>
+</html>
