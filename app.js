@@ -247,39 +247,48 @@ document.getElementById("export").addEventListener("click", () => {
   URL.revokeObjectURL(url);
 });
 
-// CSV 내보내기(엑셀용)
 document.getElementById("exportCsv").addEventListener("click", () => {
-  const all = loadAll(); // { "YYYY-MM-DD": [ {id,name,kcal,ts} ... ] }
+  const all = loadAll();
   const rows = [];
-  rows.push(["date","name","kcal","time"]); // 헤더
+  rows.push(["date","name","kcal","time"]);
 
   const dates = Object.keys(all).sort();
   for (const d of dates) {
     const entries = all[d] ?? [];
-    entries
-      .slice()
-      .sort((a,b)=>a.ts-b.ts)
-      .forEach(e => {
-        const t = new Date(e.ts);
-        const hh = String(t.getHours()).padStart(2,"0");
-        const mm = String(t.getMinutes()).padStart(2,"0");
-        rows.push([d, e.name, String(e.kcal), `${hh}:${mm}`]);
-      });
+    entries.slice().sort((a,b)=>a.ts-b.ts).forEach(e => {
+      const t = new Date(e.ts);
+      const hh = String(t.getHours()).padStart(2,"0");
+      const mm = String(t.getMinutes()).padStart(2,"0");
+      rows.push([d, e.name, String(e.kcal), `${hh}:${mm}`]);
+    });
   }
 
   const csv = rows.map(r => r.map(csvEscape).join(",")).join("\n");
-  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" }); // BOM 포함(한글 깨짐 방지)
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+  if (isIOS) {
+    // iOS/PWA에서 download가 실패하는 경우가 많아서 새 탭으로 열기
+    window.open(url, "_blank");
+    // 열린 화면에서 공유 버튼 → “파일에 저장” 또는 “다운로드”
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    alert("새 탭이 열리면 공유 버튼으로 '파일에 저장' 하세요.");
+    return;
+  }
+
   const a = document.createElement("a");
   a.href = url;
   a.download = `calorie-calendar-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
 function csvEscape(v) {
   const s = String(v ?? "");
-  // 콤마/따옴표/줄바꿈 있으면 따옴표로 감싸고 내부 따옴표는 2개로
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
   return s;
 }
@@ -298,3 +307,4 @@ function escapeHtml(s){
 // 초기
 
 render();
+
